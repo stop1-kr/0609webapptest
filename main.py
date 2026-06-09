@@ -17,7 +17,7 @@ st.markdown("""
 st.title("🐛 ✨ 이차함수 지렁이 대모험! ✨ 🐛")
 st.markdown("**목표:** 그래프 $y = a(x-p)^2 + q$ 를 보고, **a(부호) ➔ p ➔ q** 를 순서대로 맞추세요!")
 
-# 🎮 게임 엔진 HTML/CSS/JS (외부 라이브러리 X)
+# 🎮 게임 엔진 HTML/CSS/JS
 game_html = """
 <!DOCTYPE html>
 <html lang="ko">
@@ -32,11 +32,12 @@ game_html = """
             display: flex;
             justify-content: center;
             align-items: flex-start;
-            touch-action: none; /* 아이패드 스크롤, 확대 완벽 방지 */
+            touch-action: none; /* 아이패드 스크롤, 확대 방지 */
             user-select: none;
             -webkit-user-select: none;
         }
         .container {
+            position: relative; /* 워터마크 기준점 설정 */
             display: flex;
             flex-direction: row;
             gap: 30px;
@@ -45,9 +46,12 @@ game_html = """
             border-radius: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
-        /* 왼쪽: 게임 화면 */
+        /* 왼쪽: 게임 화면 + 목표 UI */
         .game-panel {
             position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
         #gameCanvas {
             background-color: #1a1a2e;
@@ -55,12 +59,24 @@ game_html = """
             box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
             border: 4px solid #4a4e69;
         }
+        .status-box {
+            background: #ffe3e3;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #d90429;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            animation: pulse 1.5s infinite;
+        }
+        
         /* 오른쪽: 그래프 & 컨트롤러 */
         .right-panel {
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            width: 380px;
+            gap: 20px; /* 방향키가 잘 보이도록 간격 넉넉히 */
+            width: 360px;
         }
         .graph-panel {
             background: white;
@@ -74,25 +90,15 @@ game_html = """
             background-color: #ffffff;
             border-radius: 10px;
         }
-        .status-box {
-            background: #ffe3e3;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            font-size: 1.3rem;
-            font-weight: bold;
-            color: #d90429;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            animation: pulse 1.5s infinite;
-        }
-        /* 십자 방향키(D-pad) 레이아웃 - 3x3 그리드 적용 */
+        
+        /* 십자 방향키(D-pad) 레이아웃 */
         .dpad-container {
             display: grid;
-            grid-template-columns: 85px 85px 85px;
-            grid-template-rows: 85px 85px 85px;
+            grid-template-columns: 80px 80px 80px; /* 아이패드에 맞게 크기 최적화 */
+            grid-template-rows: 80px 80px 80px;
             gap: 8px;
             justify-content: center;
-            margin-top: 5px;
+            margin-top: 10px;
         }
         .btn {
             background: #457b9d;
@@ -111,7 +117,7 @@ game_html = """
         }
         .btn:active {
             transform: translateY(6px);
-            box-shadow: 0 0 0 #1d3557;
+            box-shadow: 0 0 0 transparent;
             background: #1d3557;
         }
         
@@ -130,15 +136,14 @@ game_html = """
         }
         .btn.boost.active {
             background: #d90429;
-            box-shadow: 0 6px 0 #9d021d;
+            box-shadow: 0 6px 0 transparent;
             transform: translateY(6px);
-            box-shadow: 0 0 0 transparent;
         }
         
         /* 오버레이 (시작/종료) */
         .overlay {
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
+            top: 0; left: 0; width: 500px; height: 500px;
             background: rgba(0,0,0,0.75);
             border-radius: 15px;
             display: flex;
@@ -161,9 +166,23 @@ game_html = """
             cursor: pointer;
             box-shadow: 0 6px 15px rgba(230, 57, 70, 0.5);
         }
+        
+        /* 제작자 마크 (왼쪽 구석, 희미하게, 터치 통과) */
+        .watermark {
+            position: absolute;
+            bottom: 10px;
+            left: 20px;
+            font-size: 13px;
+            color: #adb5bd;
+            opacity: 0.5;
+            font-weight: bold;
+            pointer-events: none; /* 터치 방해 금지 */
+            z-index: 5;
+        }
+        
         @keyframes pulse {
             0% { transform: scale(1); }
-            50% { transform: scale(1.03); }
+            50% { transform: scale(1.02); }
             100% { transform: scale(1); }
         }
     </style>
@@ -171,7 +190,10 @@ game_html = """
 <body>
 
 <div class="container">
-    <!-- 왼쪽: 게임 캔버스 -->
+    <!-- 워터마크 추가 -->
+    <div class="watermark">stop1</div>
+
+    <!-- 왼쪽: 게임 캔버스 + 현재 목표 UI -->
     <div class="game-panel">
         <canvas id="gameCanvas" width="500" height="500"></canvas>
         <div id="overlay" class="overlay">
@@ -179,20 +201,21 @@ game_html = """
             <p id="overDesc">그래프를 보고<br>a(부호), p, q를 찾아 지렁이를 키우세요!</p>
             <button id="startBtn" class="start-btn">게임 시작 🚀</button>
         </div>
+        
+        <!-- 현재 목표 알림창을 게임화면 바로 아래로 이동 -->
+        <div class="status-box" id="targetBox">
+            🔥 현재 목표: <span id="targetVar" style="font-size:1.7rem;">a (부호)</span>
+        </div>
     </div>
 
-    <!-- 오른쪽: 그래프 및 컨트롤 -->
+    <!-- 오른쪽: 그래프 및 방향키 -->
     <div class="right-panel">
         <div class="graph-panel">
             <h3 style="margin: 5px 0; color:#343a40;">y = a(x-p)² + q</h3>
-            <canvas id="graphCanvas" width="360" height="360"></canvas>
+            <canvas id="graphCanvas" width="340" height="340"></canvas>
         </div>
         
-        <div class="status-box" id="targetBox">
-            🔥 현재 목표: <span id="targetVar" style="font-size:1.6rem;">a (부호)</span>
-        </div>
-        
-        <!-- 방향키 십자배열 및 중앙 부스트 -->
+        <!-- 방향키 십자배열 및 중앙 부스트 (위로 당겨짐) -->
         <div class="dpad-container">
             <button class="btn up" id="btnUp">🔼</button>
             <button class="btn left" id="btnLeft">◀️</button>
@@ -201,7 +224,7 @@ game_html = """
             <button class="btn down" id="btnDown">🔽</button>
         </div>
         
-        <div style="text-align:center; font-weight:bold; color:#457b9d; font-size:1.2rem; margin-top:5px;">
+        <div style="text-align:center; font-weight:bold; color:#457b9d; font-size:1.4rem; margin-top:5px;">
             지렁이 길이: <span id="score">3</span> 🐛
         </div>
     </div>
@@ -295,7 +318,7 @@ game_html = """
         foods = [];
         
         if (targetStage === 0) {
-            // [조건 반영] 1단계(a)일 때는 + 와 - 딱 2개의 블록만 나타남
+            // 1단계(a)일 때는 + 와 - 딱 2개의 블록
             const isPositive = currentA > 0;
             const vals = [
                 {val: "+", isCorrect: isPositive},
@@ -408,9 +431,8 @@ game_html = """
             ctx.fill();
             ctx.fillStyle = "#023047"; 
             
-            // +, - 일때는 기호를 더 크게 표시
             if(f.val === "+" || f.val === "-") {
-                ctx.font = "bold 24px Arial";
+                ctx.font = "bold 26px Arial"; // 부호는 큼직하게
             } else {
                 ctx.font = "bold 16px Arial";
             }
@@ -440,7 +462,6 @@ game_html = """
         document.getElementById("startBtn").innerText = "다시 도전하기 🔄";
         document.getElementById("overlay").style.display = "flex";
         
-        // 부스트 강제 종료
         currentSpeed = SLOW_SPEED;
         document.getElementById("btnBoost").classList.remove("active");
     }
@@ -460,7 +481,7 @@ game_html = """
     bindBtn("btnUp", 0, -1); bindBtn("btnDown", 0, 1);
     bindBtn("btnLeft", -1, 0); bindBtn("btnRight", 1, 0);
 
-    // === 부스트(로켓) 누르고 있을 때만 빨라지는 로직 ===
+    // === 부스트(로켓) 누르고 있을 때만 작동 ===
     const btnBoost = document.getElementById("btnBoost");
     
     const startBoost = (e) => {
@@ -468,7 +489,7 @@ game_html = """
         if(isGameOver) return;
         currentSpeed = FAST_SPEED;
         btnBoost.classList.add("active");
-        startGameLoop(); // 즉시 속도 적용
+        startGameLoop(); 
     };
     
     const stopBoost = (e) => {
@@ -476,16 +497,14 @@ game_html = """
         if(isGameOver) return;
         currentSpeed = SLOW_SPEED;
         btnBoost.classList.remove("active");
-        startGameLoop(); // 즉시 속도 원상복구
+        startGameLoop(); 
     };
 
-    // 아이패드와 PC 마우스 입력을 모두 완벽하게 처리
     btnBoost.addEventListener("pointerdown", startBoost);
     btnBoost.addEventListener("pointerup", stopBoost);
-    btnBoost.addEventListener("pointerleave", stopBoost); // 영역 벗어났을 때도 정지
+    btnBoost.addEventListener("pointerleave", stopBoost);
     btnBoost.addEventListener("pointercancel", stopBoost);
 
-    // 게임 시작
     document.getElementById("startBtn").addEventListener("pointerdown", (e) => { 
         e.preventDefault(); resetGame(); 
     });
@@ -496,5 +515,5 @@ game_html = """
 </html>
 """
 
-# HTML 렌더링
-components.html(game_html, height=750)
+# HTML 렌더링 (높이를 800으로 키워서 아래쪽 버튼 잘림 현상 원천 차단)
+components.html(game_html, height=800)
