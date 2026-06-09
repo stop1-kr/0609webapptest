@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# 페이지 기본 설정 (가로로 넓게)
+# 페이지 기본 설정
 st.set_page_config(page_title="✨이차함수 지렁이 대모험✨", page_icon="🐛", layout="wide")
 
 st.markdown("""
@@ -9,15 +9,15 @@ st.markdown("""
     /* 상단 여백 최소화 */
     .block-container {
         padding-top: 1.5rem;
-        max-width: 1200px; /* 전체 화면 폭 확장 */
+        max-width: 1200px; 
     }
     </style>
 """, unsafe_allow_html=True)
 
 st.title("🐛 ✨ 이차함수 지렁이 대모험! ✨ 🐛")
-st.markdown("**목표:** 그래프 $y = a(x-p)^2 + q$ 를 보고, **a ➔ p ➔ q** 숫자를 순서대로 맞추세요! (방향키로 천천히 이동, 🚀부스트로 빠르게!)")
+st.markdown("**목표:** 그래프 $y = a(x-p)^2 + q$ 를 보고, **a(부호) ➔ p ➔ q** 를 순서대로 맞추세요!")
 
-# 🎮 완벽하게 수정된 HTML/JS 게임 엔진
+# 🎮 게임 엔진 HTML/CSS/JS (외부 라이브러리 X)
 game_html = """
 <!DOCTYPE html>
 <html lang="ko">
@@ -45,7 +45,7 @@ game_html = """
             border-radius: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
-        /* 왼쪽: 게임 화면 (크기 키움) */
+        /* 왼쪽: 게임 화면 */
         .game-panel {
             position: relative;
         }
@@ -55,7 +55,7 @@ game_html = """
             box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
             border: 4px solid #4a4e69;
         }
-        /* 오른쪽: 그래프 & 컨트롤러 (크기 키움) */
+        /* 오른쪽: 그래프 & 컨트롤러 */
         .right-panel {
             display: flex;
             flex-direction: column;
@@ -85,18 +85,14 @@ game_html = """
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             animation: pulse 1.5s infinite;
         }
-        /* 십자 방향키(D-pad) 레이아웃 */
+        /* 십자 방향키(D-pad) 레이아웃 - 3x3 그리드 적용 */
         .dpad-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            margin-top: 5px;
-        }
-        .dpad-row {
-            display: flex;
-            gap: 10px;
+            display: grid;
+            grid-template-columns: 85px 85px 85px;
+            grid-template-rows: 85px 85px 85px;
+            gap: 8px;
             justify-content: center;
+            margin-top: 5px;
         }
         .btn {
             background: #457b9d;
@@ -104,8 +100,8 @@ game_html = """
             border-radius: 15px;
             color: white;
             font-size: 2.2rem;
-            width: 75px;
-            height: 75px;
+            width: 100%;
+            height: 100%;
             box-shadow: 0 6px 0 #1d3557;
             cursor: pointer;
             display: flex;
@@ -118,26 +114,23 @@ game_html = """
             box-shadow: 0 0 0 #1d3557;
             background: #1d3557;
         }
-        /* 부스트 버튼 */
-        .boost-btn {
+        
+        /* 십자 배치 설정 */
+        .btn.up { grid-column: 2; grid-row: 1; }
+        .btn.left { grid-column: 1; grid-row: 2; }
+        .btn.right { grid-column: 3; grid-row: 2; }
+        .btn.down { grid-column: 2; grid-row: 3; }
+        
+        /* 부스트 버튼 (정중앙) */
+        .btn.boost {
+            grid-column: 2; grid-row: 2;
             background: #fca311;
-            border: none;
-            border-radius: 15px;
-            color: white;
-            font-size: 1.5rem;
-            font-weight: bold;
-            padding: 15px;
-            width: 100%;
             box-shadow: 0 6px 0 #d08c00;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: all 0.2s;
+            font-size: 1.8rem;
         }
-        .boost-btn.active {
+        .btn.boost.active {
             background: #d90429;
             box-shadow: 0 6px 0 #9d021d;
-        }
-        .boost-btn:active {
             transform: translateY(6px);
             box-shadow: 0 0 0 transparent;
         }
@@ -178,12 +171,12 @@ game_html = """
 <body>
 
 <div class="container">
-    <!-- 왼쪽: 게임 캔버스 (500x500으로 확대) -->
+    <!-- 왼쪽: 게임 캔버스 -->
     <div class="game-panel">
         <canvas id="gameCanvas" width="500" height="500"></canvas>
         <div id="overlay" class="overlay">
             <h1 id="overTitle">🐍 지렁이 대모험</h1>
-            <p id="overDesc">그래프를 보고<br>a, p, q를 찾아 지렁이를 키우세요!</p>
+            <p id="overDesc">그래프를 보고<br>a(부호), p, q를 찾아 지렁이를 키우세요!</p>
             <button id="startBtn" class="start-btn">게임 시작 🚀</button>
         </div>
     </div>
@@ -196,22 +189,16 @@ game_html = """
         </div>
         
         <div class="status-box" id="targetBox">
-            🔥 현재 목표: <span id="targetVar" style="font-size:1.8rem;">a</span> 찾기!
+            🔥 현재 목표: <span id="targetVar" style="font-size:1.6rem;">a (부호)</span>
         </div>
         
-        <!-- 아이패드 터치용 십자 D패드 및 부스트 -->
+        <!-- 방향키 십자배열 및 중앙 부스트 -->
         <div class="dpad-container">
-            <div class="dpad-row">
-                <button class="btn up" id="btnUp">🔼</button>
-            </div>
-            <div class="dpad-row">
-                <button class="btn left" id="btnLeft">◀️</button>
-                <button class="btn down" id="btnDown">🔽</button>
-                <button class="btn right" id="btnRight">▶️</button>
-            </div>
-            
-            <!-- 부스트 버튼 -->
-            <button class="boost-btn" id="btnBoost">🐢 현재 속도: 느림 (터치시 부스트!)</button>
+            <button class="btn up" id="btnUp">🔼</button>
+            <button class="btn left" id="btnLeft">◀️</button>
+            <button class="btn boost" id="btnBoost">🚀</button>
+            <button class="btn right" id="btnRight">▶️</button>
+            <button class="btn down" id="btnDown">🔽</button>
         </div>
         
         <div style="text-align:center; font-weight:bold; color:#457b9d; font-size:1.2rem; margin-top:5px;">
@@ -221,16 +208,14 @@ game_html = """
 </div>
 
 <script>
-    // === 캔버스 설정 ===
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
     const graphCanvas = document.getElementById("graphCanvas");
     const graphCtx = graphCanvas.getContext("2d");
     
-    const gridSize = 25; // 칸 크기를 25로 키움 (20x20 칸)
+    const gridSize = 25;
     const tileCount = canvas.width / gridSize;
     
-    // === 게임 상태 변수 ===
     let snake = [];
     let dx = 0; let dy = 0;
     let nextDx = 0; let nextDy = 0;
@@ -239,86 +224,61 @@ game_html = """
     let gameLoop;
     let isGameOver = true;
     
-    // 속도 조절 (부스트 기능)
-    const SLOW_SPEED = 500;  // 천천히 (0.5초)
-    const FAST_SPEED = 120;  // 빠르게 (0.12초)
+    // 속도 설정
+    const SLOW_SPEED = 500;  // 0.5초 (기본)
+    const FAST_SPEED = 120;  // 0.12초 (부스트 시)
     let currentSpeed = SLOW_SPEED;
-    let isBoost = false;
     
     // 이차함수 관련 변수
     let currentA, currentP, currentQ;
-    let targetStage = 0; // 0:a, 1:p, 2:q
-    const stages = ['a', 'p', 'q'];
+    let targetStage = 0; // 0:a(부호), 1:p, 2:q
+    const stageDesc = ['a (볼록 방향 +, -)', 'p (꼭짓점 x좌표)', 'q (꼭짓점 y좌표)'];
     let foods = [];
 
-    // === 이차함수 문제 생성 (그래프 눈금 3단위에 맞게 출제) ===
+    // === 문제 생성 ===
     function generateProblem() {
-        // a는 -2, -1, 1, 2 중 하나 (너무 뾰족하거나 퍼지지 않게)
         const aPool = [-2, -1, 1, 2];
         currentA = aPool[Math.floor(Math.random() * aPool.length)];
-        
-        // p, q는 -6 ~ 6 범위 (3의 배수 위치를 활용하도록)
         currentP = Math.floor(Math.random() * 13) - 6;
         currentQ = Math.floor(Math.random() * 13) - 6;
         
         targetStage = 0;
-        document.getElementById("targetVar").innerText = stages[targetStage];
+        document.getElementById("targetVar").innerText = stageDesc[targetStage];
         drawMathGraph();
         spawnFoods();
     }
 
-    // === 좌표평면 그래프 그리기 (3단위 숫자 표시 포함) ===
+    // === 그래프 그리기 ===
     function drawMathGraph() {
-        const w = graphCanvas.width;
-        const h = graphCanvas.height;
-        const limit = 10; // -10 ~ 10 까지 표시
-        const scale = w / (limit * 2); 
+        const w = graphCanvas.width; const h = graphCanvas.height;
+        const limit = 10; const scale = w / (limit * 2); 
         
         graphCtx.clearRect(0, 0, w, h);
-        
-        // 그리드 옅게 그리기
         graphCtx.lineWidth = 1;
         for(let i = -limit; i <= limit; i++) {
-            // 3단위 선은 조금 더 진하게
             graphCtx.strokeStyle = (i % 3 === 0) ? "#ced4da" : "#f1f3f5";
-            
-            let px = w/2 + i*scale;
-            let py = h/2 - i*scale;
-            
-            // 세로선
+            let px = w/2 + i*scale; let py = h/2 - i*scale;
             graphCtx.beginPath(); graphCtx.moveTo(px, 0); graphCtx.lineTo(px, h); graphCtx.stroke();
-            // 가로선
             graphCtx.beginPath(); graphCtx.moveTo(0, py); graphCtx.lineTo(w, py); graphCtx.stroke();
         }
         
-        // X, Y 메인 축 (진하게)
-        graphCtx.strokeStyle = "#495057";
-        graphCtx.lineWidth = 2;
+        graphCtx.strokeStyle = "#495057"; graphCtx.lineWidth = 2;
         graphCtx.beginPath();
-        graphCtx.moveTo(0, h/2); graphCtx.lineTo(w, h/2); // X축
-        graphCtx.moveTo(w/2, 0); graphCtx.lineTo(w/2, h); // Y축
+        graphCtx.moveTo(0, h/2); graphCtx.lineTo(w, h/2);
+        graphCtx.moveTo(w/2, 0); graphCtx.lineTo(w/2, h);
         graphCtx.stroke();
 
-        // 눈금 숫자 쓰기 (3단위)
-        graphCtx.fillStyle = "#212529";
-        graphCtx.font = "bold 13px Arial";
-        graphCtx.textAlign = "center";
-        graphCtx.textBaseline = "middle";
-        
+        graphCtx.fillStyle = "#212529"; graphCtx.font = "bold 13px Arial";
+        graphCtx.textAlign = "center"; graphCtx.textBaseline = "middle";
         for(let i = -limit; i <= limit; i++) {
             if(i !== 0 && i % 3 === 0) {
-                // X축 숫자
                 graphCtx.fillText(i, w/2 + i*scale, h/2 + 15);
-                // Y축 숫자
                 graphCtx.fillText(i, w/2 - 15, h/2 - i*scale);
             }
         }
-        // 원점
         graphCtx.fillText("0", w/2 - 12, h/2 + 15);
         
-        // 포물선 그리기
-        graphCtx.strokeStyle = "#e63946";
-        graphCtx.lineWidth = 4;
+        graphCtx.strokeStyle = "#e63946"; graphCtx.lineWidth = 4;
         graphCtx.beginPath();
         for(let px = 0; px <= w; px += 2) {
             let mathX = (px - w/2) / scale;
@@ -330,43 +290,59 @@ game_html = """
         graphCtx.stroke();
     }
 
-    // === 숫자 블록 생성 ===
+    // === 블록 생성 로직 ===
     function spawnFoods() {
         foods = [];
-        let correctVal = (targetStage === 0) ? currentA : (targetStage === 1) ? currentP : currentQ;
         
-        // 오답 만들기
-        let wrong1, wrong2;
-        do { wrong1 = Math.floor(Math.random() * 13) - 6; } while(wrong1 === correctVal);
-        do { wrong2 = Math.floor(Math.random() * 13) - 6; } while(wrong2 === correctVal || wrong2 === wrong1);
-        
-        const vals = [
-            {val: correctVal, isCorrect: true},
-            {val: wrong1, isCorrect: false},
-            {val: wrong2, isCorrect: false}
-        ];
-        
-        vals.forEach(item => {
-            let fx, fy, occupied;
-            do {
-                occupied = false;
-                // 벽에 너무 붙지 않게 (1 ~ tileCount-2) 범위로 스폰
-                fx = Math.floor(Math.random() * (tileCount - 2)) + 1;
-                fy = Math.floor(Math.random() * (tileCount - 2)) + 1;
-                for(let s of snake) if(s.x === fx && s.y === fy) occupied = true;
-                for(let f of foods) if(f.x === fx && f.y === fy) occupied = true;
-            } while(occupied);
-            foods.push({x: fx, y: fy, val: item.val, isCorrect: item.isCorrect});
-        });
+        if (targetStage === 0) {
+            // [조건 반영] 1단계(a)일 때는 + 와 - 딱 2개의 블록만 나타남
+            const isPositive = currentA > 0;
+            const vals = [
+                {val: "+", isCorrect: isPositive},
+                {val: "-", isCorrect: !isPositive}
+            ];
+            vals.forEach(item => {
+                let fx, fy, occupied;
+                do {
+                    occupied = false;
+                    fx = Math.floor(Math.random() * (tileCount - 2)) + 1;
+                    fy = Math.floor(Math.random() * (tileCount - 2)) + 1;
+                    for(let s of snake) if(s.x === fx && s.y === fy) occupied = true;
+                    for(let f of foods) if(f.x === fx && f.y === fy) occupied = true;
+                } while(occupied);
+                foods.push({x: fx, y: fy, val: item.val, isCorrect: item.isCorrect});
+            });
+        } else {
+            // 2단계, 3단계(p, q)일 때는 숫자 3개
+            let correctVal = (targetStage === 1) ? currentP : currentQ;
+            let wrong1, wrong2;
+            do { wrong1 = Math.floor(Math.random() * 13) - 6; } while(wrong1 === correctVal);
+            do { wrong2 = Math.floor(Math.random() * 13) - 6; } while(wrong2 === correctVal || wrong2 === wrong1);
+            
+            const vals = [
+                {val: correctVal, isCorrect: true},
+                {val: wrong1, isCorrect: false},
+                {val: wrong2, isCorrect: false}
+            ];
+            
+            vals.forEach(item => {
+                let fx, fy, occupied;
+                do {
+                    occupied = false;
+                    fx = Math.floor(Math.random() * (tileCount - 2)) + 1;
+                    fy = Math.floor(Math.random() * (tileCount - 2)) + 1;
+                    for(let s of snake) if(s.x === fx && s.y === fy) occupied = true;
+                    for(let f of foods) if(f.x === fx && f.y === fy) occupied = true;
+                } while(occupied);
+                foods.push({x: fx, y: fy, val: item.val, isCorrect: item.isCorrect});
+            });
+        }
     }
 
-    // === 게임 로직 ===
     function resetGame() {
         snake = [ {x: 10, y: 10}, {x: 10, y: 11}, {x: 10, y: 12} ];
         score = 3; document.getElementById("score").innerText = score;
         dx = 0; dy = -1; nextDx = 0; nextDy = -1;
-        isBoost = false; currentSpeed = SLOW_SPEED;
-        updateBoostBtnUI();
         
         generateProblem();
         isGameOver = false;
@@ -383,14 +359,11 @@ game_html = """
     function updateGame() {
         if(isGameOver) return;
         dx = nextDx; dy = nextDy;
-        
         let head = {x: snake[0].x + dx, y: snake[0].y + dy};
         
-        // 벽 충돌
         if(head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
             endGame("앗! 벽에 부딪혔어요! 💥"); return;
         }
-        // 꼬리 충돌
         for(let i=0; i<snake.length; i++) {
             if(head.x === snake[i].x && head.y === snake[i].y) {
                 endGame("앗! 자기 꼬리를 물었어요! 😵"); return;
@@ -399,7 +372,6 @@ game_html = """
         
         snake.unshift(head);
         
-        // 먹이 체크
         let ate = foods.findIndex(f => f.x === head.x && f.y === head.y);
         if(ate !== -1) {
             if(foods[ate].isCorrect) {
@@ -407,20 +379,18 @@ game_html = """
                 targetStage++;
                 if(targetStage > 2) { generateProblem(); } 
                 else { 
-                    document.getElementById("targetVar").innerText = stages[targetStage];
+                    document.getElementById("targetVar").innerText = stageDesc[targetStage];
                     spawnFoods(); 
                 }
             } else {
-                endGame(`오답입니다! 숫자 ${foods[ate].val} 을(를) 먹었습니다 😭`); return;
+                endGame(`오답입니다! [ ${foods[ate].val} ] 을(를) 먹었습니다 😭`); return;
             }
         } else {
-            snake.pop(); // 먹이 안먹었으면 꼬리 제거
+            snake.pop();
         }
-        
         drawGame();
     }
 
-    // === 게임 렌더링 ===
     function drawGame() {
         ctx.fillStyle = "#1a1a2e"; ctx.fillRect(0, 0, canvas.width, canvas.height);
         
@@ -436,7 +406,14 @@ game_html = """
             ctx.fillStyle = "#ffb703"; ctx.beginPath();
             ctx.arc(f.x*gridSize + gridSize/2, f.y*gridSize + gridSize/2, gridSize/2 - 2, 0, Math.PI*2);
             ctx.fill();
-            ctx.fillStyle = "#023047"; ctx.font = "bold 16px Arial";
+            ctx.fillStyle = "#023047"; 
+            
+            // +, - 일때는 기호를 더 크게 표시
+            if(f.val === "+" || f.val === "-") {
+                ctx.font = "bold 24px Arial";
+            } else {
+                ctx.font = "bold 16px Arial";
+            }
             ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText(f.val, f.x*gridSize + gridSize/2, f.y*gridSize + gridSize/2);
         });
@@ -462,68 +439,62 @@ game_html = """
         document.getElementById("overDesc").innerHTML = `${msg}<br><br>최종 길이: <b>${score}</b> 🐛`;
         document.getElementById("startBtn").innerText = "다시 도전하기 🔄";
         document.getElementById("overlay").style.display = "flex";
+        
+        // 부스트 강제 종료
+        currentSpeed = SLOW_SPEED;
+        document.getElementById("btnBoost").classList.remove("active");
     }
 
-    // === 조작부 (이벤트 버그 수정) ===
+    // === 방향키 조작 ===
     function changeDir(newDx, newDy) {
-        // 좌우 이동 중일 때는 상하 입력만 허용
         if (dx !== 0 && newDy !== 0) { nextDx = 0; nextDy = newDy; }
-        // 상하 이동 중일 때는 좌우 입력만 허용
         if (dy !== 0 && newDx !== 0) { nextDx = newDx; nextDy = 0; }
-        // 멈춰있을 때 (시작 전)
         if (dx === 0 && dy === 0) { nextDx = newDx; nextDy = newDy; }
     }
 
-    // 아이패드 지원 확실한 pointerdown 사용 (mousedown, touchstart 모두 커버)
     const bindBtn = (id, ndx, ndy) => {
         document.getElementById(id).addEventListener("pointerdown", (e) => { 
-            e.preventDefault(); 
-            changeDir(ndx, ndy); 
+            e.preventDefault(); changeDir(ndx, ndy); 
         });
     };
     bindBtn("btnUp", 0, -1); bindBtn("btnDown", 0, 1);
     bindBtn("btnLeft", -1, 0); bindBtn("btnRight", 1, 0);
 
-    // 부스트(속도업) 버튼 토글 로직
+    // === 부스트(로켓) 누르고 있을 때만 빨라지는 로직 ===
     const btnBoost = document.getElementById("btnBoost");
-    function updateBoostBtnUI() {
-        if(isBoost) {
-            btnBoost.classList.add("active");
-            btnBoost.innerText = "🚀 부스트 ON! (빨라짐)";
-        } else {
-            btnBoost.classList.remove("active");
-            btnBoost.innerText = "🐢 현재 속도: 느림 (터치시 부스트!)";
-        }
-    }
     
-    btnBoost.addEventListener("pointerdown", (e) => {
-        e.preventDefault();
+    const startBoost = (e) => {
+        if(e) e.preventDefault();
         if(isGameOver) return;
-        isBoost = !isBoost;
-        currentSpeed = isBoost ? FAST_SPEED : SLOW_SPEED;
-        updateBoostBtnUI();
-        startGameLoop(); // 속도 즉시 반영
-    });
+        currentSpeed = FAST_SPEED;
+        btnBoost.classList.add("active");
+        startGameLoop(); // 즉시 속도 적용
+    };
+    
+    const stopBoost = (e) => {
+        if(e) e.preventDefault();
+        if(isGameOver) return;
+        currentSpeed = SLOW_SPEED;
+        btnBoost.classList.remove("active");
+        startGameLoop(); // 즉시 속도 원상복구
+    };
 
-    // 시작 버튼
+    // 아이패드와 PC 마우스 입력을 모두 완벽하게 처리
+    btnBoost.addEventListener("pointerdown", startBoost);
+    btnBoost.addEventListener("pointerup", stopBoost);
+    btnBoost.addEventListener("pointerleave", stopBoost); // 영역 벗어났을 때도 정지
+    btnBoost.addEventListener("pointercancel", stopBoost);
+
+    // 게임 시작
     document.getElementById("startBtn").addEventListener("pointerdown", (e) => { 
-        e.preventDefault(); 
-        resetGame(); 
+        e.preventDefault(); resetGame(); 
     });
 
-    drawMathGraph(); // 초기 빈 화면 출력
+    drawMathGraph();
 </script>
 </body>
 </html>
 """
 
-# HTML 렌더링 (가로 세로 넉넉하게 지정하여 스크롤 생김 방지)
+# HTML 렌더링
 components.html(game_html, height=750)
-
-st.write("---")
-st.markdown("### 💡 게임 플레이 팁")
-st.markdown("""
-* **느긋하게 생각하세요!** 지렁이는 아주 천천히 움직입니다. 좌표평면의 **3단위 눈금**을 참고하여 꼭짓점 좌표와 그래프의 폭(a)을 계산할 시간이 충분합니다.
-* **부스트 활용하기:** 정답을 찾았다면 `부스트` 버튼을 눌러 빠르게 정답 블록을 먹어 치우세요! 다시 누르면 원래 속도로 돌아옵니다.
-* **이동 규칙:** 지렁이는 좌우로 이동 중일 때는 위/아래 방향키만, 위아래로 이동 중일 때는 좌/우 방향키만 먹힙니다. 벽과 꼬리에 조심하세요!
-""")
